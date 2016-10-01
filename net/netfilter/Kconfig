@@ -159,6 +159,15 @@ config NF_CT_PROTO_UDPLITE
 	  connections.
 
 	  To compile it as a module, choose M here.  If unsure, say N.
+	  
+config NF_CT_PROTO_ESP
+	tristate 'ESP protocol connection tracking support'
+	depends on NETFILTER_ADVANCED && BCM_KF_NETFILTER
+	help
+	  With this option enabled, the layer 3 ESP protocol 
+	  tracking will be able to do tracking on ESP connections
+	  
+	  To compile it as a module, choose M here.  If unsure, say N.
 
 config NF_CONNTRACK_AMANDA
 	tristate "Amanda backup protocol support"
@@ -306,6 +315,16 @@ config NF_CONNTRACK_SIP
 
 	  To compile it as a module, choose M here.  If unsure, say N.
 
+config NF_CONNTRACK_IPSEC
+	tristate "IPSEC protocol support"
+	depends on BCM_KF_NETFILTER
+	default m if NETFILTER_ADVANCED=n
+	help
+	  IPSec is used for for securing IP communications by authenticating and 
+	  encrypting each IP packet of a communication session
+	  
+	  To compile it as a module, choose M here.  If unsure, say N.
+
 config NF_CONNTRACK_TFTP
 	tristate "TFTP protocol support"
 	depends on NETFILTER_ADVANCED
@@ -316,6 +335,33 @@ config NF_CONNTRACK_TFTP
 	  you will need this.
 
 	  To compile it as a module, choose M here.  If unsure, say N.
+
+#BRCM begin
+config NF_DYNDSCP
+  tristate  "Dynamic DSCP Mangling support "
+  depends on NF_CONNTRACK && BCM_KF_NETFILTER
+  default n
+  help
+  	This option enables support for dynamic DSCP, i.e tos will be derived from 
+  	tos value of WAN packets of each connection.
+
+config NF_CONNTRACK_RTSP
+	tristate "RTSP protocol support"
+	depends on NF_CONNTRACK && BCM_KF_NETFILTER
+	help
+	  RTSP (Real Time Streaming Protocol) support.
+
+	  To compile it as a module, choose M here.  If unsure, say N.
+
+config NETFILTER_XT_TARGET_DC
+	tristate '"DC" target support'
+	depends on NETFILTER_XTABLES && BCM_KF_NETFILTER
+	help
+	  Say Y if you want to be able to do data connections (and their
+	  packets) 
+
+	  To compile it as a module, choose M here.  If unsure, say N.
+#BRCM end
 
 config NF_CT_NETLINK
 	tristate 'Connection tracking netlink interface'
@@ -690,6 +736,16 @@ config NETFILTER_XT_TARGET_TCPOPTSTRIP
 	help
 	  This option adds a "TCPOPTSTRIP" target, which allows you to strip
 	  TCP options from TCP packets.
+
+config NETFILTER_XT_TARGET_SKIPLOG
+	tristate '"SKIPLOG" target support'
+	depends on NETFILTER_XTABLES && (IPV6 || IPV6=n) && BCM_KF_NETFILTER
+	---help---
+	  configuration like:
+
+	  iptables -A FORWARD -p tcp -j SKIPLOG
+
+	  To compile it as a module, choose M here.  If unsure, say N.
 
 # alphabetically ordered list of matches
 

@@ -1243,7 +1243,7 @@ static int send_signal(int sig, struct siginfo *info, struct task_struct *t,
 }
 
 static void print_fatal_signal(struct pt_regs *regs, int signr)
-{
+{   
 	printk("%s/%d: potentially unexpected fatal signal %d.\n",
 		current->comm, task_pid_nr(current), signr);
 

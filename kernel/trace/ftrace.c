@@ -3660,7 +3660,11 @@ static const struct file_operations ftrace_graph_fops = {
 	.read		= seq_read,
 	.write		= ftrace_graph_write,
 	.release	= ftrace_graph_release,
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
+	.llseek		= ftrace_regex_lseek,
+#else
 	.llseek		= seq_lseek,
+#endif
 };
 #endif /* CONFIG_FUNCTION_GRAPH_TRACER */
 
@@ -4243,7 +4247,11 @@ static const struct file_operations ftrace_pid_fops = {
 	.open		= ftrace_pid_open,
 	.write		= ftrace_pid_write,
 	.read		= seq_read,
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
+	.llseek		= ftrace_regex_lseek,
+#else
 	.llseek		= seq_lseek,
+#endif	
 	.release	= ftrace_pid_release,
 };
 

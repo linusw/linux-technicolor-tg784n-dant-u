@@ -13,6 +13,10 @@
 #define wfi()	__asm__ __volatile__ ("wfi" : : : "memory")
 #endif
 
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX)
+#include <mach/barriers.h>
+#else /*!(defined(CONFIG_BCM_KF_ARM_BCM963XX)*/
+
 #if __LINUX_ARM_ARCH__ >= 7
 #define isb() __asm__ __volatile__ ("isb" : : : "memory")
 #define dsb() __asm__ __volatile__ ("dsb" : : : "memory")
@@ -58,6 +62,7 @@
 #define smp_mb()	dmb()
 #define smp_rmb()	dmb()
 #define smp_wmb()	dmb()
+#endif
 #endif
 
 #define read_barrier_depends()		do { } while(0)

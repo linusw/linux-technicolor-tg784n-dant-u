@@ -59,6 +59,11 @@
 
 #include "l2tp_core.h"
 
+#if defined(CONFIG_BCM_KF_BLOG) && defined(CONFIG_BLOG)
+#include <linux/nbuff.h>
+#include <linux/blog.h>
+#endif
+
 #define L2TP_DRV_VERSION	"V2.0"
 
 /* L2TP header constants */
@@ -1649,6 +1654,30 @@ struct l2tp_session *l2tp_session_create(int priv_size, struct l2tp_tunnel *tunn
 }
 EXPORT_SYMBOL_GPL(l2tp_session_create);
 
+
+#if defined(CONFIG_BCM_KF_BLOG) && defined(CONFIG_BLOG)
+int l2tp_rcv_check(struct net_device *dev, uint16_t tunnel_id, uint16_t session_id)
+{
+    struct net *net = dev_net(dev);
+    struct l2tp_tunnel *tunnel;
+    struct l2tp_session *session = NULL;
+    int ret = BLOG_L2TP_RCV_NO_TUNNEL;
+    
+    tunnel = l2tp_tunnel_find(net, tunnel_id);
+    if (tunnel)
+    {   //printk("*** l2tp tunnel found!!!\n"); 
+        session = l2tp_session_find(net, tunnel, session_id);
+    }   
+    if (session)
+    {   
+        //printk("*** l2tp session found!!!\n");    
+        ret = BLOG_L2TP_RCV_TUNNEL_FOUND;
+    }   
+return ret; 
+}
+EXPORT_SYMBOL(l2tp_rcv_check);
+#endif
+
 /*****************************************************************************
  * Init and cleanup
  *****************************************************************************/
@@ -1682,6 +1711,11 @@ static int __init l2tp_init(void)
 	rc = register_pernet_device(&l2tp_net_ops);
 	if (rc)
 		goto out;
+
+#if defined(CONFIG_BCM_KF_BLOG) && defined(CONFIG_BLOG)
+    printk(KERN_INFO "L2TP core: blog_l2tp_rcv_check \n" );
+    blog_l2tp_rcv_check_fn = (blog_l2tp_rcv_check_t) l2tp_rcv_check;
+#endif 
 
 	printk(KERN_INFO "L2TP core driver, %s\n", L2TP_DRV_VERSION);
 

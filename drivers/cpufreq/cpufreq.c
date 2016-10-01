@@ -968,6 +968,13 @@ static int cpufreq_add_dev(struct device *dev, struct subsys_interface *sif)
 	if (ret)
 		goto err_out_unregister;
 
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX)
+	if (cpufreq_driver->init_sysfs) {
+		ret = cpufreq_driver->init_sysfs(policy);
+		if (ret)
+			goto err_out_unregister;
+	}
+#endif
 	unlock_policy_rwsem_write(cpu);
 
 	kobject_uevent(&policy->kobj, KOBJ_ADD);
@@ -1725,6 +1732,61 @@ error_out:
 	return ret;
 }
 
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX)
+int cpufreq_set_policy(struct cpufreq_policy *data, struct cpufreq_policy *policy)
+{
+	return __cpufreq_set_policy(data, policy);
+}
+EXPORT_SYMBOL(cpufreq_set_policy);
+
+// set governor, and if supported, set speed to specified fraction of max
+int cpufreq_set_speed(const char *govstr, int fraction)
+{
+	struct cpufreq_policy *data, policy;
+	struct cpufreq_governor *governor;
+	unsigned cpu = smp_processor_id();
+	int rc;
+
+	governor = __find_governor(govstr);
+	if (governor == 0) {
+		printk("governor %s unavailable\n", govstr);
+		return -ENOENT;
+	}
+
+	data = cpufreq_cpu_get(cpu);
+	policy = *data;
+	policy.governor = governor;
+	rc = __cpufreq_set_policy(data, &policy);
+	if (rc == 0) {
+		data->user_policy.policy = data->policy;
+		data->user_policy.governor = data->governor;
+		if (fraction && data->governor->store_setspeed) {
+			data->governor->store_setspeed(data, data->max / fraction);
+		}
+	}
+	cpufreq_cpu_put(data);
+	return rc;
+}
+EXPORT_SYMBOL(cpufreq_set_speed);
+
+// return current frequency (0 if dynamic) and max frequency
+unsigned cpufreq_get_freq_max(unsigned *max)
+{
+	unsigned cpu = smp_processor_id();
+	struct cpufreq_policy *data;
+	unsigned freq = 0;
+
+	data = cpufreq_cpu_get(cpu);
+	if (max) *max = data->max;
+	if (data->governor && data->governor->store_setspeed) {
+		freq = data->cur;
+	}
+	cpufreq_cpu_put(data);
+
+	return freq;
+}
+EXPORT_SYMBOL(cpufreq_get_freq_max);
+#endif
 /**
  *	cpufreq_update_policy - re-evaluate an existing cpufreq policy
  *	@cpu: CPU which shall be re-evaluated

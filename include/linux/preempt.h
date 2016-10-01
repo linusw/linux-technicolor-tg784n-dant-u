@@ -119,6 +119,10 @@ do { \
 # ifdef CONFIG_SMP
    extern void migrate_disable(void);
    extern void migrate_enable(void);
+#if defined(CONFIG_BCM_KF_CPU_DOWN_PREEMPT_ON)
+# define migrate_disable_preempt_on()	migrate_disable()
+# define migrate_enable_preempt_on()	migrate_enble()
+#endif
 # else /* CONFIG_SMP */
 #  define migrate_disable()		do { } while (0)
 #  define migrate_enable()		do { } while (0)
@@ -130,6 +134,10 @@ do { \
 # define preempt_enable_nort()		preempt_enable()
 # define migrate_disable()		preempt_disable()
 # define migrate_enable()		preempt_enable()
+#if defined(CONFIG_BCM_KF_CPU_DOWN_PREEMPT_ON)
+   extern void migrate_disable_preempt_on(void);
+   extern void migrate_enable_preempt_on(void);
+#endif
 #endif
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS

@@ -90,8 +90,11 @@ static inline void arch_spin_lock(arch_spinlock_t *lock)
 	: "=&r" (tmp)
 	: "r" (&lock->lock), "r" (1)
 	: "cc");
-
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_B15_MEGA_BARRIER)
+	smp_rmb();
+#else
 	smp_mb();
+#endif
 }
 
 static inline int arch_spin_trylock(arch_spinlock_t *lock)
@@ -107,7 +110,11 @@ static inline int arch_spin_trylock(arch_spinlock_t *lock)
 	: "cc");
 
 	if (tmp == 0) {
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_B15_MEGA_BARRIER)
+		smp_rmb();
+#else
 		smp_mb();
+#endif
 		return 1;
 	} else {
 		return 0;
@@ -116,7 +123,11 @@ static inline int arch_spin_trylock(arch_spinlock_t *lock)
 
 static inline void arch_spin_unlock(arch_spinlock_t *lock)
 {
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_B15_MEGA_BARRIER)
+	smp_rmb();
+#else
 	smp_mb();
+#endif
 
 	__asm__ __volatile__(
 "	str	%1, [%0]\n"
@@ -150,7 +161,11 @@ static inline void arch_write_lock(arch_rwlock_t *rw)
 	: "r" (&rw->lock), "r" (0x80000000)
 	: "cc");
 
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_B15_MEGA_BARRIER)
+	smp_rmb();
+#else
 	smp_mb();
+#endif
 }
 
 static inline int arch_write_trylock(arch_rwlock_t *rw)
@@ -166,7 +181,11 @@ static inline int arch_write_trylock(arch_rwlock_t *rw)
 	: "cc");
 
 	if (tmp == 0) {
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_B15_MEGA_BARRIER)
+		smp_rmb();
+#else
 		smp_mb();
+#endif
 		return 1;
 	} else {
 		return 0;
@@ -175,7 +194,11 @@ static inline int arch_write_trylock(arch_rwlock_t *rw)
 
 static inline void arch_write_unlock(arch_rwlock_t *rw)
 {
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_B15_MEGA_BARRIER)
+	smp_rmb();
+#else
 	smp_mb();
+#endif
 
 	__asm__ __volatile__(
 	"str	%1, [%0]\n"
@@ -216,14 +239,22 @@ static inline void arch_read_lock(arch_rwlock_t *rw)
 	: "r" (&rw->lock)
 	: "cc");
 
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_B15_MEGA_BARRIER)
+	smp_rmb();
+#else
 	smp_mb();
+#endif
 }
 
 static inline void arch_read_unlock(arch_rwlock_t *rw)
 {
 	unsigned long tmp, tmp2;
 
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_B15_MEGA_BARRIER)
+	smp_rmb();
+#else
 	smp_mb();
+#endif
 
 	__asm__ __volatile__(
 "1:	ldrex	%0, [%2]\n"
@@ -251,7 +282,11 @@ static inline int arch_read_trylock(arch_rwlock_t *rw)
 	: "r" (&rw->lock)
 	: "cc");
 
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_B15_MEGA_BARRIER)
+	smp_rmb();
+#else
 	smp_mb();
+#endif
 	return tmp2 == 0;
 }
 

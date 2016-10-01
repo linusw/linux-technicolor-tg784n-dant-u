@@ -126,6 +126,12 @@ static int __sock_diag_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 	if (nlmsg_len(nlh) < sizeof(*req))
 		return -EINVAL;
 
+	#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
+	/*CVE-2013-1763*/
+	if (req->sdiag_family >= AF_MAX)
+		return -EINVAL;
+	#endif
+
 	hndl = sock_diag_lock_handler(req->sdiag_family);
 	if (hndl == NULL)
 		err = -ENOENT;

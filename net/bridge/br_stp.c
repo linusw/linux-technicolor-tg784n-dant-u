@@ -16,6 +16,10 @@
 #include "br_private.h"
 #include "br_private_stp.h"
 
+#if defined(CONFIG_BCM_KF_STP_LOOP)
+#include <linux/bcm_log.h>
+#endif
+
 /* since time values in bpdu are in jiffies and then scaled (1/256)
  * before sending, make sure that is at least one STP tick.
  */
@@ -29,11 +33,60 @@ static const char *const br_port_state_names[] = {
 	[BR_STATE_BLOCKING] = "blocking",
 };
 
+#if 0 && defined(CONFIG_BCM_KF_STP_LOOP)
+
+// leaving debug framework in, as it's useful
+#define MACADDR_FMT  "%02x%02x%02x%02x%02x%02x"
+#define MACADDR_PRMS(x)  (x)[0],(x)[1],(x)[2],(x)[3],(x)[4],(x)[5]
+
+#define BRIDGEID_FMT        "%02x%02x/" MACADDR_FMT
+#define BRIDGEID_PRMS(x)    (x).prio[0], (x).prio[1], MACADDR_PRMS(x.addr)
+
+
+#define BCMLOG_CFG_BPDU(logId, bpdu) do { \
+    BCM_LOG_DEBUG(logId, "BPDU: (%p)", bpdu); \
+    BCM_LOG_DEBUG(logId, "   topology_change:     %d ", (bpdu)->topology_change); \
+    BCM_LOG_DEBUG(logId, "   topology_change_ack: %d ", (bpdu)->topology_change_ack); \
+    BCM_LOG_DEBUG(logId, "   root :               " BRIDGEID_FMT, BRIDGEID_PRMS((bpdu)->root)); \
+    BCM_LOG_DEBUG(logId, "   root_path_cost  :    %d ", (bpdu)->root_path_cost); \
+    BCM_LOG_DEBUG(logId, "   bridge_id :          " BRIDGEID_FMT, BRIDGEID_PRMS((bpdu)->bridge_id)); \
+    BCM_LOG_DEBUG(logId, "   port_id :            %d" , (bpdu)->port_id); \
+    BCM_LOG_DEBUG(logId, "   message_age :        %d ", (bpdu)->message_age);\
+    BCM_LOG_DEBUG(logId, "   max_age :            %d ", (bpdu)->max_age);\
+    BCM_LOG_DEBUG(logId, "   hello_time :         %d ", (bpdu)->hello_time);\
+    BCM_LOG_DEBUG(logId, "   forward_delay :      %d ", (bpdu)->forward_delay);\
+} while(0)
+
+#define BCMLOG_PORT(logId, p) do { \
+    BCM_LOG_DEBUG(logId, "PORT %d: (%s)", (p)->port_id, (p)->dev->name); \
+    BCM_LOG_DEBUG(logId, "   state:               %s", br_port_state_names[(p)->state]); \
+    BCM_LOG_DEBUG(logId, "   designated_root:     " BRIDGEID_FMT, BRIDGEID_PRMS((p)->designated_root));\
+    BCM_LOG_DEBUG(logId, "   designated_bridge:   " BRIDGEID_FMT, BRIDGEID_PRMS((p)->designated_bridge));\
+    BCM_LOG_DEBUG(logId, "   designated_cost:     %d", (p)->designated_cost);\
+    BCM_LOG_DEBUG(logId, "   designated_port:     %d", (p)->designated_port);\
+    BCM_LOG_DEBUG(logId, "   path_cost:           %d", (p)->path_cost);\
+    BCM_LOG_DEBUG(logId, "   br:                  %p", (p)->br);\
+} while(0)
+
+#define BCMLOG_BR(logId, br) do { \
+    BCM_LOG_DEBUG(logId, "(br) %p (%s):", (br), (br)->dev->name);\
+    BCM_LOG_DEBUG(logId, "   bridge_id:           " BRIDGEID_FMT, BRIDGEID_PRMS((br)->bridge_id));\
+    BCM_LOG_DEBUG(logId, "   root_port:           %d", (br)->root_port);\
+    BCM_LOG_DEBUG(logId, "   root_path_cost:      %d", (br)->root_path_cost);\
+} while(0)
+
+#endif //CONFIG_BCM_KF_STP_LOOP
+
+
 void br_log_state(const struct net_bridge_port *p)
 {
 	br_info(p->br, "port %u(%s) entered %s state\n",
 		(unsigned) p->port_no, p->dev->name,
 		br_port_state_names[p->state]);
+
+#if defined(CONFIG_BCM_KF_BRIDGE_STP)
+	br_stp_notify_state_port(p);
+#endif   
 }
 
 /* called under bridge lock */
@@ -367,6 +420,15 @@ static void br_make_blocking(struct net_bridge_port *p)
 		del_timer(&p->forward_delay_timer);
 	}
 }
+
+#if defined(CONFIG_BCM_KF_STP_LOOP)
+void br_loopback_detected(struct net_bridge_port *p) {
+    if  (p->port_no == p->br->root_port) {
+        BCM_LOG_ERROR(BCM_LOG_ID_LOG, "Loopback detected on root port %s -- making blocking\n", p->dev->name);
+        br_make_blocking(p);
+    }
+}
+#endif
 
 /* called under bridge lock */
 static void br_make_forwarding(struct net_bridge_port *p)

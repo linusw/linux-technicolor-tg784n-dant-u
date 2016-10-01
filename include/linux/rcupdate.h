@@ -940,7 +940,11 @@ void __kfree_rcu(struct rcu_head *head, unsigned long offset)
 {
 	typedef void (*rcu_callback)(struct rcu_head *);
 
+#if defined(CONFIG_BCM_KF_RCU_CONSTANT_BUG)
+        // this causes a bug if optimization is disabled
+#else
 	BUILD_BUG_ON(!__builtin_constant_p(offset));
+#endif
 
 	/* See the kfree_rcu() header comment. */
 	BUILD_BUG_ON(!__is_kfree_rcu_offset(offset));

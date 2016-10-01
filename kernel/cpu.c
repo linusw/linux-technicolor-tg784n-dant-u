@@ -499,11 +499,19 @@ static int __ref _cpu_down(unsigned int cpu, int tasks_frozen)
 	cpumask_andnot(cpumask, cpu_online_mask, cpumask_of(cpu));
 	set_cpus_allowed_ptr(current, cpumask);
 	free_cpumask_var(cpumask);
+#if defined(CONFIG_BCM_KF_CPU_DOWN_PREEMPT_ON)
+	migrate_disable_preempt_on();
+#else
 	migrate_disable();
+#endif
 	mycpu = smp_processor_id();
 	if (mycpu == cpu) {
 		printk(KERN_ERR "Yuck! Still on unplug CPU\n!");
+#if defined(CONFIG_BCM_KF_CPU_DOWN_PREEMPT_ON)
+		migrate_enable_preempt_on();
+#else
 		migrate_enable();
+#endif
 		return -EBUSY;
 	}
 
@@ -556,7 +564,11 @@ static int __ref _cpu_down(unsigned int cpu, int tasks_frozen)
 out_release:
 	cpu_unplug_done(cpu);
 out_cancel:
+#if defined(CONFIG_BCM_KF_CPU_DOWN_PREEMPT_ON)
+	migrate_enable_preempt_on();
+#else
 	migrate_enable();
+#endif
 	cpu_hotplug_done();
 	if (!err)
 		cpu_notify_nofail(CPU_POST_DEAD | mod, hcpu);

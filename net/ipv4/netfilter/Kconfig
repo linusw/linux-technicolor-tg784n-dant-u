@@ -238,6 +238,13 @@ config NF_NAT_PROTO_SCTP
 	default NF_NAT && NF_CT_PROTO_SCTP
 	depends on NF_NAT && NF_CT_PROTO_SCTP
 	select LIBCRC32C
+	
+#BCM_KF 
+config NF_NAT_PROTO_ESP
+	tristate
+	depends on BCM_KF_NETFILTER && NF_NAT && NF_CT_PROTO_ESP
+	default NF_NAT && NF_CT_PROTO_ESP
+#BCM_KF END
 
 config NF_NAT_FTP
 	tristate
@@ -274,6 +281,24 @@ config NF_NAT_SIP
 	tristate
 	depends on NF_CONNTRACK && NF_NAT
 	default NF_NAT && NF_CONNTRACK_SIP
+
+config NF_NAT_IPSEC
+	tristate
+	depends on  BCM_KF_NETFILTER && NF_CONNTRACK && NF_NAT
+	default NF_NAT && NF_CONNTRACK_IPSEC
+
+config NF_NAT_PT
+	tristate "Port Triggering support"
+	depends on NF_NAT && BCM_KF_NETFILTER
+	help
+	  Port Triggering support
+
+	  To compile it as a module, choose M here.  If unsure, say Y.
+
+config NF_NAT_RTSP
+	tristate
+	depends on BCM_KF_NETFILTER && IP_NF_IPTABLES && NF_CONNTRACK && NF_NAT
+	default NF_NAT && NF_CONNTRACK_RTSP
 
 # mangle + specific targets
 config IP_NF_MANGLE

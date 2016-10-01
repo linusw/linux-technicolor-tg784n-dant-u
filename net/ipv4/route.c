@@ -3029,9 +3029,15 @@ static int rt_fill_info(struct net *net,
 
 		if (ipv4_is_multicast(dst) && !ipv4_is_local_multicast(dst) &&
 		    IPV4_DEVCONF_ALL(net, MC_FORWARDING)) {
+#if defined(CONFIG_BCM_KF_IGMP)
+			int err = ipmr_get_route(net, skb,
+						 rt->rt_src, rt->rt_dst,
+						 r, nowait, rt->rt_iif);
+#else
 			int err = ipmr_get_route(net, skb,
 						 rt->rt_src, rt->rt_dst,
 						 r, nowait);
+#endif
 			if (err <= 0) {
 				if (!nowait) {
 					if (err == 0)

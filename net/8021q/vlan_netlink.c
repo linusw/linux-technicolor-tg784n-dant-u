@@ -135,6 +135,17 @@ static int vlan_newlink(struct net *src_net, struct net_device *dev,
 	if (err < 0)
 		return err;
 
+#if defined(CONFIG_BCM_KF_VLAN) && (defined(CONFIG_BCM_VLAN) || defined(CONFIG_BCM_VLAN_MODULE))
+	dev->path.hw_port_type = real_dev->path.hw_port_type;
+	err = netdev_path_add(dev, real_dev);
+	if (err < 0) {
+		pr_err("%s: failed to add %s to Interface path (%d)\n", __func__, dev->name, err);
+		return err;
+	}
+
+	netdev_path_dump(dev);
+#endif
+
 	return register_vlan_dev(dev);
 }
 

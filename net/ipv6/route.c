@@ -908,6 +908,17 @@ void ip6_route_input(struct sk_buff *skb)
 	const struct ipv6hdr *iph = ipv6_hdr(skb);
 	struct net *net = dev_net(skb->dev);
 	int flags = RT6_LOOKUP_F_HAS_SADDR;
+#if defined(CONFIG_MIPS_BCM963XX) && defined(CONFIG_BCM_KF_UNALIGNED_EXCEPTION)
+	struct flowi6 fl6;
+
+	fl6.flowi6_iif  = skb->dev->ifindex;
+	fl6.flowi6_mark = skb->mark;
+	fl6.flowi6_proto = iph->nexthdr;
+	fl6.daddr = iph->daddr;
+	fl6.saddr = iph->saddr;
+	memcpy(&fl6.flowlabel, iph, sizeof(__be32));
+	fl6.flowlabel &= IPV6_FLOWINFO_MASK;
+#else
 	struct flowi6 fl6 = {
 		.flowi6_iif = skb->dev->ifindex,
 		.daddr = iph->daddr,
@@ -916,6 +927,7 @@ void ip6_route_input(struct sk_buff *skb)
 		.flowi6_mark = skb->mark,
 		.flowi6_proto = iph->nexthdr,
 	};
+#endif
 
 	skb_dst_set(skb, ip6_route_input_lookup(net, skb->dev, &fl6, flags));
 }
@@ -1292,7 +1304,12 @@ int ip6_route_add(struct fib6_config *cfg)
 	if (!table)
 		goto out;
 
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
+	/*CVE-2014-2309*/
+	rt = ip6_dst_alloc(&net->ipv6.ip6_dst_ops, NULL, (cfg->fc_flags & RTF_ADDRCONF) ? 0 : DST_NOCOUNT);
+#else	
 	rt = ip6_dst_alloc(&net->ipv6.ip6_dst_ops, NULL, DST_NOCOUNT);
+#endif
 
 	if (!rt) {
 		err = -ENOMEM;
@@ -2467,7 +2484,11 @@ static int rt6_fill_node(struct net *net,
 	if (iif) {
 #ifdef CONFIG_IPV6_MROUTE
 		if (ipv6_addr_is_multicast(&rt->rt6i_dst.addr)) {
+#if defined(CONFIG_BCM_KF_MLD)
+			int err = ip6mr_get_route(net, skb, rtm, nowait, iif);
+#else
 			int err = ip6mr_get_route(net, skb, rtm, nowait);
+#endif
 			if (err <= 0) {
 				if (!nowait) {
 					if (err == 0)

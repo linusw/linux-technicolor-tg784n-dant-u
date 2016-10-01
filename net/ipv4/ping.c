@@ -200,6 +200,37 @@ static void inet_get_ping_group_range_net(struct net *net, gid_t *low,
 
 static int ping_init_sock(struct sock *sk)
 {
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
+	/*CVE-2014-2851*/
+	struct net *net = sock_net(sk);
+	gid_t group = current_egid();
+	gid_t range[2];
+		struct group_info *group_info;
+		int i, j, count;
+		int ret = 0;
+
+	inet_get_ping_group_range_net(net, range, range+1);
+	if (range[0] <= group && group <= range[1])
+		return 0;
+
+		group_info = get_current_groups();
+		count = group_info->ngroups;
+	for (i = 0; i < group_info->nblocks; i++) {
+		int cp_count = min_t(int, NGROUPS_PER_BLOCK, count);
+		for (j = 0; j < cp_count; j++) {
+			group = group_info->blocks[i][j];
+			if (range[0] <= group && group <= range[1])
+				goto out_release_group;
+		}
+		count -= cp_count;
+	}
+	ret = -EACCES;
+
+out_release_group:
+	put_group_info(group_info);
+	return ret;
+	/*CVE-2014-2851*/
+#else
 	struct net *net = sock_net(sk);
 	gid_t group = current_egid();
 	gid_t range[2];
@@ -223,6 +254,8 @@ static int ping_init_sock(struct sock *sk)
 	}
 
 	return -EACCES;
+
+#endif
 }
 
 static void ping_close(struct sock *sk, long timeout)

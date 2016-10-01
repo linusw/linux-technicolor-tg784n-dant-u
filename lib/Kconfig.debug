@@ -303,6 +303,16 @@ config SCHEDSTATS
 	  application, you can say N to avoid the very slight overhead
 	  this adds.
 
+# BRCM CONFIG_BCM_KF_PROC_BCM
+config BCM_SCHEDAUDIT
+	bool "Broadcom Scheduler Audit features"
+	depends on PROC_FS
+	default n
+	help
+	  If you say Y here, the /proc/<pid>/bcm_schedaudit file will be
+	  provided to allow auditing of scheduler performance.
+# BRCM END
+
 config TIMER_STATS
 	bool "Collect kernel timers statistics"
 	depends on DEBUG_KERNEL && PROC_FS

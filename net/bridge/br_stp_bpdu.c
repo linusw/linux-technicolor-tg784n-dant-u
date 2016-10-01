@@ -78,6 +78,15 @@ void br_send_config_bpdu(struct net_bridge_port *p, struct br_config_bpdu *bpdu)
 	if (p->br->stp_enabled != BR_KERNEL_STP)
 		return;
 
+#if defined(CONFIG_BCM_KF_STP_LOOP)
+	// for debugging purposes only:
+	if (p->is_bpdu_blocked) {
+		printk("supressing transmission of config bpdu on port (%s)\n", p->dev->name);        
+		return;
+	}
+#endif
+    
+
 	buf[0] = 0;
 	buf[1] = 0;
 	buf[2] = 0;
@@ -122,6 +131,14 @@ void br_send_tcn_bpdu(struct net_bridge_port *p)
 
 	if (p->br->stp_enabled != BR_KERNEL_STP)
 		return;
+    
+#if defined(CONFIG_BCM_KF_STP_LOOP)
+	// for debugging purposes only:
+	if (p->is_bpdu_blocked) {
+		printk("supressing transmission of tcn bpdu on port (%s)\n", p->dev->name);		  
+		return;
+	}
+#endif
 
 	buf[0] = 0;
 	buf[1] = 0;

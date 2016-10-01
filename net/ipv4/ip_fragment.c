@@ -522,10 +522,14 @@ found:
 	if (qp->q.last_in == (INET_FRAG_FIRST_IN | INET_FRAG_LAST_IN) &&
 	    qp->q.meat == qp->q.len)
 		return ip_frag_reasm(qp, prev, dev);
-
+#if !defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
 	write_lock(&ip4_frags.lock);
 	list_move_tail(&qp->q.lru_list, &qp->q.net->lru_list);
 	write_unlock(&ip4_frags.lock);
+#else
+	/*CVE-2014-0100*/
+	inet_frag_lru_move(&qp->q);
+#endif
 	return -EINPROGRESS;
 
 err:

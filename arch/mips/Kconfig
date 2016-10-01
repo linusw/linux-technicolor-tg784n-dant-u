@@ -34,6 +34,7 @@ menu "Machine selection"
 
 config ZONE_DMA
 	bool
+	default y if BCM_KF_MIPS_BCM963XX
 
 choice
 	prompt "System type"
@@ -114,11 +115,28 @@ config BCM63XX
 	select SYS_HAS_CPU_MIPS32_R1
 	select SYS_SUPPORTS_32BIT_KERNEL
 	select SYS_SUPPORTS_BIG_ENDIAN
+	select SYS_SUPPORTS_LITTLE_ENDIAN if BCM_KF_MIPS_BCM963XX
 	select SYS_HAS_EARLY_PRINTK
 	select SWAP_IO_SPACE
 	select ARCH_REQUIRE_GPIOLIB
 	help
 	 Support for BCM63XX based boards
+
+config MIPS_BCM963XX
+	bool "Broadcom 96xxx boards (kern)"
+	select CEVT_R4K
+	select CSRC_R4K
+	select IRQ_CPU
+	select DMA_NONCOHERENT
+	select SYS_SUPPORTS_32BIT_KERNEL
+	select SYS_HAS_CPU_MIPS32_R1
+	select SYS_SUPPORTS_BIG_ENDIAN
+	select SYS_SUPPORTS_LITTLE_ENDIAN
+	select HW_HAS_PCI
+ 	depends on BCM_KF_MIPS_BCM963XX
+	help
+	 "Support for BCM963XX boards"
+
 
 config MIPS_COBALT
 	bool "Cobalt Server"
@@ -877,8 +895,16 @@ config ARC
 config ARCH_MAY_HAVE_PC_FDC
 	bool
 
+if BCM_KF_MIPS_BCM963XX || BCM_KF_MIPS_BCM9685XX
+config BOOT_RAW
+	bool "boot frow raw image"
+        default n
+endif
+if !BCM_KF_MIPS_BCM963XX && !BCM_KF_MIPS_BCM9685XX
 config BOOT_RAW
 	bool
+        default n
+endif
 
 config CEVT_BCM1480
 	bool
@@ -1159,6 +1185,7 @@ config BOOT_ELF32
 
 config MIPS_L1_CACHE_SHIFT
 	int
+	default "4" if BCM_KF_MIPS_BCM963XX && MIPS_BCM963XX
 	default "4" if MACH_DECSTATION || MIKROTIK_RB532 || PMC_MSP4200_EVAL
 	default "6" if MIPS_CPU_SCACHE
 	default "7" if SGI_IP22 || SGI_IP27 || SGI_IP28 || SNI_RM || CPU_CAVIUM_OCTEON
@@ -2270,12 +2297,23 @@ config SYS_SUPPORTS_1000HZ
 config SYS_SUPPORTS_1024HZ
 	bool
 
+if BCM_KF_MIPS_BCM963XX || BCM_KF_MIPS_BCM9685XX
 config SYS_SUPPORTS_ARBIT_HZ
 	bool
 	default y if !SYS_SUPPORTS_48HZ && !SYS_SUPPORTS_100HZ && \
 		     !SYS_SUPPORTS_128HZ && !SYS_SUPPORTS_250HZ && \
 		     !SYS_SUPPORTS_256HZ && !SYS_SUPPORTS_1000HZ && \
 		     !SYS_SUPPORTS_1024HZ
+endif
+
+if !BCM_KF_MIPS_BCM963XX && !BCM_KF_MIPS_BCM9685XX
+config SYS_SUPPORTS_ARBIT_HZ
+	bool
+	default y if !SYS_SUPPORTS_48HZ && !SYS_SUPPORTS_100HZ && \
+		     !SYS_SUPPORTS_128HZ && !SYS_SUPPORTS_250HZ && \
+		     !SYS_SUPPORTS_256HZ && !SYS_SUPPORTS_1000HZ && \
+		     !SYS_SUPPORTS_1024HZ
+endif
 
 config HZ
 	int
@@ -2366,6 +2404,10 @@ config PCI
 
 config PCI_DOMAINS
 	bool
+
+if BCM_KF_MIPS_BCM963XX
+source "drivers/pci/pcie/Kconfig"
+endif
 
 source "drivers/pci/Kconfig"
 
@@ -2489,7 +2531,6 @@ config MIPS32_N32
 config BINFMT_ELF32
 	bool
 	default y if MIPS32_O32 || MIPS32_N32
-
 endmenu
 
 menu "Power management options"
@@ -2521,3 +2562,8 @@ source "security/Kconfig"
 source "crypto/Kconfig"
 
 source "lib/Kconfig"
+
+
+	
+
+

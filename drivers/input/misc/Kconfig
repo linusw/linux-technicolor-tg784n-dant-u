@@ -590,4 +590,11 @@ config INPUT_XEN_KBDDEV_FRONTEND
 	  To compile this driver as a module, choose M here: the
 	  module will be called xen-kbdfront.
 
+
+config INPUT_GPIO_BUTTONS
+	tristate "Polled GPIO buttons input device"
+	help
+	  Say Y here if you want support for a input device based on 
+	  polling GPIO buttons.
+
 endif

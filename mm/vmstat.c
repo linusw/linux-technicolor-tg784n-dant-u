@@ -677,6 +677,9 @@ static void walk_zones_in_node(struct seq_file *m, pg_data_t *pgdat,
 #else
 #define TEXT_FOR_DMA32(xx)
 #endif
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_ZONE_ACP)
+#define TEXT_FOR_ACP(xx) xx "_acp",
+#endif
 
 #ifdef CONFIG_HIGHMEM
 #define TEXT_FOR_HIGHMEM(xx) xx "_high",
@@ -684,8 +687,15 @@ static void walk_zones_in_node(struct seq_file *m, pg_data_t *pgdat,
 #define TEXT_FOR_HIGHMEM(xx)
 #endif
 
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_ZONE_ACP)
+#define TEXTS_FOR_ZONES(xx) TEXT_FOR_DMA(xx) TEXT_FOR_DMA32(xx) TEXT_FOR_ACP(xx) \
+					xx "_normal", TEXT_FOR_HIGHMEM(xx) \
+					xx "_movable",
+					
+#else
 #define TEXTS_FOR_ZONES(xx) TEXT_FOR_DMA(xx) TEXT_FOR_DMA32(xx) xx "_normal", \
 					TEXT_FOR_HIGHMEM(xx) xx "_movable",
+#endif
 
 const char * const vmstat_text[] = {
 	/* Zoned VM counters */

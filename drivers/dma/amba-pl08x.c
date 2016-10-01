@@ -1475,6 +1475,9 @@ bool pl08x_filter_id(struct dma_chan *chan, void *chan_id)
 
 	return false;
 }
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX)
+EXPORT_SYMBOL(pl08x_filter_id);
+#endif /* CONFIG_BCM_KF_ARM_BCM963XX */
 
 /*
  * Just check that the device is there and active

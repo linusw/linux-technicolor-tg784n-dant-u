@@ -35,7 +35,11 @@ again:
 		struct iphdr _iph;
 ip:
 		iph = skb_header_pointer(skb, nhoff, sizeof(_iph), &_iph);
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
+		if (!iph || iph->ihl < 5)
+#else
 		if (!iph)
+#endif
 			return false;
 
 		if (ip_is_fragment(iph))

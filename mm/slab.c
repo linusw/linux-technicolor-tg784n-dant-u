@@ -153,6 +153,25 @@
 #endif
 
 /* Legal flag mask for kmem_cache_create(). */
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_ZONE_ACP)
+#if DEBUG
+# define CREATE_MASK	(SLAB_RED_ZONE | \
+			 SLAB_POISON | SLAB_HWCACHE_ALIGN | \
+			 SLAB_CACHE_DMA | \
+			 SLAB_CACHE_ACP | \
+			 SLAB_STORE_USER | \
+			 SLAB_RECLAIM_ACCOUNT | SLAB_PANIC | \
+			 SLAB_DESTROY_BY_RCU | SLAB_MEM_SPREAD | \
+			 SLAB_DEBUG_OBJECTS | SLAB_NOLEAKTRACE | SLAB_NOTRACK)
+#else
+# define CREATE_MASK	(SLAB_HWCACHE_ALIGN | \
+			 SLAB_CACHE_DMA | \
+			 SLAB_CACHE_ACP | \
+			 SLAB_RECLAIM_ACCOUNT | SLAB_PANIC | \
+			 SLAB_DESTROY_BY_RCU | SLAB_MEM_SPREAD | \
+			 SLAB_DEBUG_OBJECTS | SLAB_NOLEAKTRACE | SLAB_NOTRACK)
+#endif
+#else
 #if DEBUG
 # define CREATE_MASK	(SLAB_RED_ZONE | \
 			 SLAB_POISON | SLAB_HWCACHE_ALIGN | \
@@ -167,6 +186,7 @@
 			 SLAB_RECLAIM_ACCOUNT | SLAB_PANIC | \
 			 SLAB_DESTROY_BY_RCU | SLAB_MEM_SPREAD | \
 			 SLAB_DEBUG_OBJECTS | SLAB_NOLEAKTRACE | SLAB_NOTRACK)
+#endif
 #endif
 
 /*
@@ -309,8 +329,11 @@ static void cache_reap(struct work_struct *unused);
  */
 static __always_inline int index_of(const size_t size)
 {
+#if (defined(CONFIG_BCM_KF_BOUNCE) && defined(CONFIG_BRCM_BOUNCE))
+#define __bad_size() printk("__bad_size %d\n", size )
+#else
 	extern void __bad_size(void);
-
+#endif
 	if (__builtin_constant_p(size)) {
 		int i = 0;
 
@@ -564,10 +587,17 @@ EXPORT_SYMBOL(malloc_sizes);
 struct cache_names {
 	char *name;
 	char *name_dma;
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_ZONE_ACP)
+	char *name_acp;
+#endif
 };
 
 static struct cache_names __initdata cache_names[] = {
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_ZONE_ACP)
+#define CACHE(x) { .name = "size-" #x, .name_dma = "size-" #x "(DMA)", .name_acp = "size-" #x "(ACP)" },
+#else
 #define CACHE(x) { .name = "size-" #x, .name_dma = "size-" #x "(DMA)" },
+#endif
 #include <linux/kmalloc_sizes.h>
 	{NULL,}
 #undef CACHE
@@ -823,6 +853,10 @@ static inline struct kmem_cache *__find_general_cachep(size_t size,
 	while (size > csizep->cs_size)
 		csizep++;
 
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_ZONE_ACP)
+	if (unlikely(gfpflags & GFP_ACP))
+		return csizep->cs_acpcachep;
+#endif
 	/*
 	 * Really subtle: The last entry with cs->cs_size==ULONG_MAX
 	 * has cs_{dma,}cachep==NULL. Thus no special case
@@ -1704,6 +1738,15 @@ void __init kmem_cache_init(void)
 					sizes->cs_size,
 					ARCH_KMALLOC_MINALIGN,
 					ARCH_KMALLOC_FLAGS|SLAB_CACHE_DMA|
+						SLAB_PANIC,
+					NULL);
+#endif
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_ZONE_ACP)
+		sizes->cs_acpcachep = kmem_cache_create(
+					names->name_acp,
+					sizes->cs_size,
+					ARCH_KMALLOC_MINALIGN,
+					ARCH_KMALLOC_FLAGS|SLAB_CACHE_ACP|
 						SLAB_PANIC,
 					NULL);
 #endif
@@ -2600,6 +2643,10 @@ kmem_cache_create (const char *name, size_t size, size_t align,
 	cachep->gfpflags = 0;
 	if (CONFIG_ZONE_DMA_FLAG && (flags & SLAB_CACHE_DMA))
 		cachep->gfpflags |= GFP_DMA;
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_ZONE_ACP)
+	if (flags & SLAB_CACHE_ACP)
+		cachep->gfpflags |= GFP_ACP;
+#endif
 	cachep->buffer_size = size;
 	cachep->reciprocal_buffer_size = reciprocal_value(size);
 
@@ -2969,6 +3016,12 @@ static void kmem_flagcheck(struct kmem_cache *cachep, gfp_t flags)
 		else
 			BUG_ON(cachep->gfpflags & GFP_DMA);
 	}
+#if defined(CONFIG_BCM_KF_ARM_BCM963XX) && defined(CONFIG_BCM_ZONE_ACP)
+	if (flags & GFP_ACP)
+		BUG_ON(!(cachep->gfpflags & GFP_ACP));
+	else
+		BUG_ON(cachep->gfpflags & GFP_ACP);
+#endif
 }
 
 static void *slab_get_obj(struct kmem_cache *cachep, struct slab *slabp,

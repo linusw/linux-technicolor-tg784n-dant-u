@@ -1547,6 +1547,11 @@ static int usb_if_uevent(struct device *dev, struct kobj_uevent_env *env)
 		   alt->desc.bInterfaceProtocol))
 		return -ENOMEM;
 
+#if defined(CONFIG_BCM_KF_USB_HOSTS)
+	if (add_uevent_var(env, "USBDEVNAME=%s", dev_name(dev)))
+		return -ENOMEM;
+#endif
+
 	return 0;
 }
 

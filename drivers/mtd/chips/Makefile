@@ -13,3 +13,7 @@ obj-$(CONFIG_MTD_JEDECPROBE)	+= jedec_probe.o
 obj-$(CONFIG_MTD_RAM)		+= map_ram.o
 obj-$(CONFIG_MTD_ROM)		+= map_rom.o
 obj-$(CONFIG_MTD_ABSENT)	+= map_absent.o
+obj-$(CONFIG_MTD_SPI)		+= spiprobe.o
+obj-$(CONFIG_MTD_NAND_TL)	+= nand_tl.o
+
+EXTRA_CFLAGS	+= -I$(INC_BRCMDRIVER_PUB_PATH)/$(BRCM_BOARD) -I$(INC_BRCMSHARED_PUB_PATH)/$(BRCM_BOARD)

@@ -2169,6 +2169,10 @@ static int shmem_remount_fs(struct super_block *sb, int *flags, char *data)
 	unsigned long inodes;
 	int error = -EINVAL;
 
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
+	/* CVE-2013-1767 */
+	config.mpol = NULL;
+#endif
 	if (shmem_parse_options(data, &config, true))
 		return error;
 
@@ -2193,8 +2197,19 @@ static int shmem_remount_fs(struct super_block *sb, int *flags, char *data)
 	sbinfo->max_inodes  = config.max_inodes;
 	sbinfo->free_inodes = config.max_inodes - inodes;
 
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
+	/* CVE-2013-1767 */
+	/*
+	* Preserve previous mempolicy unless mpol remount option was specified.
+	*/
+	if (config.mpol) {
+		mpol_put(sbinfo->mpol);
+		sbinfo->mpol = config.mpol; /* transfers initial ref */
+	}
+#else	
 	mpol_put(sbinfo->mpol);
 	sbinfo->mpol        = config.mpol;	/* transfers initial ref */
+#endif
 out:
 	spin_unlock(&sbinfo->stat_lock);
 	return error;

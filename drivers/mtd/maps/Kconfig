@@ -74,6 +74,12 @@ config MTD_PHYSMAP_OF
 	  physically into the CPU's memory. The mapping description here is
 	  taken from OF device tree.
 
+config MTD_BCM963XX
+	tristate "Broadcom 963xx ADSL board flash memory support"
+	depends on BCM_KF_MTD_BCM963XX
+	help
+	  Broadcom 963xx ADSL board flash memory
+
 config MTD_PMC_MSP_EVM
 	tristate "CFI Flash device mapped on PMC-Sierra MSP"
 	depends on PMC_MSP && MTD_CFI
@@ -96,6 +102,260 @@ config MSP_FLASH_MAP_LIMIT
 	hex
 	default "0x02000000"
 	depends on MSP_FLASH_MAP_LIMIT_32M
+
+config RAWSTORAGE_VERSION
+	int "Rawstorage version: 1 = v1, 2 = v2"
+	default 2
+	help
+		Version number of the rawstorage filesystem.
+		v1 is the original version, no nand flash support
+		v2 has nand flash support
+
+config MTD_SPEEDTOUCH
+    bool "Support speedtouch flash mapping"
+    depends on MTD_COMPLEX_MAPPINGS && (MIPS_BCM963XX || BCM963138 || BCM963148)
+	default n
+    help
+        This provides MTD mapping for use with the speedtouch bcm96848
+        boards.
+
+config MTD_SPEEDTOUCH_DYNAMIC
+	bool "Dynamic detection of flash mapping"
+	depends on MTD_SPEEDTOUCH
+	default n
+	help
+	  Dynamically detect existing partitions in flash.
+
+config MTD_SPEEDTOUCH_BTAB
+	bool "Support for systems with dual-bank-flash"
+	depends on MTD_SPEEDTOUCH
+	default n
+	help
+	  Support for systems with 'dual bank flash'. For such systems,
+	  bank table (BTAB) configuration is available in Flash, specifying
+	  where banks are located (e.g. userfs, etc.). Note that the offsets
+	  of all the partitions must be specified relatively to the bank in
+	  which they are located, not to the begining of Flash.
+
+config MTD_SPEEDTOUCH_DUAL_BANK_MANUAL
+        bool "Support for manual config six patitions in flash"
+        depends on MTD_SPEEDTOUCH
+        default n
+        help
+          Support for manual config six patitions in flash for dual bank.
+
+config MTD_SPEEDTOUCH_EEPROM
+	bool "Support for eeprom emulation in flash"
+	depends on MTD_SPEEDTOUCH
+	default n
+	help
+	  Support for eeprom emultation in flash.
+
+config MTD_SPEEDTOUCH_MAP_RAW_FLASH
+	bool "Map the whole flash as an mtd partition"
+	depends on MTD_SPEEDTOUCH
+	default n
+	help
+	  Map the whole flash as an mtd partition, this is useful for customization tools such as the Anvil.
+
+config SPEEDTOUCH_FLASH_START
+        hex "Physical start address of flash mapping"
+        depends on MTD_SPEEDTOUCH
+        default "0xbf000000"
+
+config SPEEDTOUCH_PHYS_SIZE
+       hex "Physical size of flash"
+       depends on MTD_SPEEDTOUCH
+       default "0x800000"
+
+config SPEEDTOUCH_PART1_NAME
+       string "Partition 1 name"
+       depends on MTD_SPEEDTOUCH
+       default "userfs"
+
+config SPEEDTOUCH_PART1_SIZE
+       hex "Partition 1 size"
+       depends on MTD_SPEEDTOUCH
+       default "0xc00000"
+
+config SPEEDTOUCH_PART1_OFFSET
+       hex "Partition 1 offset (relative to the physical flash start)"
+       depends on MTD_SPEEDTOUCH
+       default "0x0"
+
+config SPEEDTOUCH_PART2_NAME
+       string "Partition 2 name"
+       depends on MTD_SPEEDTOUCH
+       default "kernel"
+
+config SPEEDTOUCH_PART2_SIZE
+       hex "Partition 2 size"
+       depends on MTD_SPEEDTOUCH
+       default "0x17fffc"
+
+config SPEEDTOUCH_PART2_OFFSET
+       hex "Partition 2 offset (relative to the physical flash start)"
+       depends on MTD_SPEEDTOUCH
+       default "0xc40004"
+
+config SPEEDTOUCH_PART3_NAME
+       string "Partition 3 name"
+       depends on MTD_SPEEDTOUCH
+       default "rootfs"
+
+config SPEEDTOUCH_PART3_SIZE
+       hex "Partition 3 size"
+       depends on MTD_SPEEDTOUCH
+       default "0x240000"
+
+config SPEEDTOUCH_PART3_OFFSET
+       hex "Partition 3 offset (relative to the physical flash start)"
+       depends on MTD_SPEEDTOUCH
+       default "0xdc0000"
+
+config SPEEDTOUCH_PART4_NAME 
+       string "Partition 4 name"
+       depends on MTD_SPEEDTOUCH_EEPROM
+       default "eeprom"
+
+config SPEEDTOUCH_PART4_SIZE
+       hex "Partition 4 size"
+       depends on MTD_SPEEDTOUCH_EEPROM
+       default "0x10000"
+
+config SPEEDTOUCH_PART4_OFFSET
+       hex "Partition 4 offset (relative to the physical flash start)"
+       depends on MTD_SPEEDTOUCH_EEPROM
+       default "0x30000"
+
+config SPEEDTOUCH_PART5_NAME
+       string "Partition 5 name"
+       depends on MTD_SPEEDTOUCH && MTD_SPEEDTOUCH_DUAL_BANK_MANUAL
+       default "rootfs_data"
+
+config SPEEDTOUCH_PART5_SIZE
+       hex "Partition 5 size"
+       depends on MTD_SPEEDTOUCH && MTD_SPEEDTOUCH_DUAL_BANK_MANUAL
+       default "0x0"
+
+config SPEEDTOUCH_PART5_OFFSET
+       hex "Partition 5 offset (relative to the physical flash start)"
+       depends on MTD_SPEEDTOUCH && MTD_SPEEDTOUCH_DUAL_BANK_MANUAL
+       default "0x0"
+
+config SPEEDTOUCH_PART6_NAME
+       string "Partition 6 name"
+       depends on MTD_SPEEDTOUCH && MTD_SPEEDTOUCH_DUAL_BANK_MANUAL
+       default "rawstorage"
+
+config SPEEDTOUCH_PART6_SIZE
+       hex "Partition 6 size"
+       depends on MTD_SPEEDTOUCH && MTD_SPEEDTOUCH_DUAL_BANK_MANUAL
+       default "0x0"
+
+config SPEEDTOUCH_PART6_OFFSET
+       hex "Partition 6 offset (relative to the physical flash start)"
+       depends on MTD_SPEEDTOUCH && MTD_SPEEDTOUCH_DUAL_BANK_MANUAL
+       default "0x0"
+
+config SPEEDTOUCH_BLVERSION_OFFSET
+	hex "Bootloader version offset (relative to the physical flash start)"
+	depends on MTD_SPEEDTOUCH
+	default "0x1FFFD"
+
+config BCM_MTD
+	bool "Support Broadcom flash mapping"
+	depends on MTD_COMPLEX_MAPPINGS && MIPS_BCM963XX
+	default n
+	help
+	  This provides MTD mapping for use with the Broadcom 96848
+	  chips on (at least) Thomson 516/536 modems.
+
+config BCM_MTD_DYNAMIC
+	bool "Dynamic detection of flash mapping"
+	depends on BCM_MTD
+	default n
+	help
+	  Dynamically detect existing partitions in flash.
+
+config BCM_MTD_MIRROR
+	hex "Mirroring point"
+	depends on BCM_MTD
+	default "0x400000"
+	help
+	  In case a flash is mirrored, this parameter specifies an offset of
+	  the mirroring point starting from the beginning of the flash
+	  (which must be taken as 0).
+
+config BCM_FLASH_START
+	hex "Physical start address of flash mapping"
+	depends on BCM_MTD
+	default "0xbfc00000"
+
+config BCM_PHYS_SIZE
+	hex "Physical size of flash"
+	depends on BCM_MTD
+	default "0x400000"
+
+config BCM_PART1_NAME
+	string "Partition 1 name"
+	depends on BCM_MTD
+	default "bootloader"
+
+config BCM_PART1_SIZE
+	hex "Partition 1 size"
+	depends on BCM_MTD
+	default "0x10000"
+
+config BCM_PART1_OFFSET
+	hex "Partition 1 offset (relative to the physical flash start)"
+	depends on BCM_MTD
+	default "0x0"
+	
+config BCM_PART2_NAME
+        string "Partition 2 name"
+        depends on BCM_MTD
+        default "rootfs"
+
+config BCM_PART2_SIZE
+        hex "Partition 2 size"
+        depends on BCM_MTD
+        default "0x188000"
+
+config BCM_PART2_OFFSET
+        hex "Partition 2 offset (relative to the physical flash start)"
+        depends on BCM_MTD
+        default "0x10100"
+
+config BCM_PART3_NAME
+        string "Partition 3 name"
+        depends on BCM_MTD
+        default "kernel"
+
+config BCM_PART3_SIZE
+        hex "Partition 3 size"
+        depends on BCM_MTD
+        default "0x267F00"
+
+config BCM_PART3_OFFSET
+        hex "Partition 3 offset (relative to the physical flash start)"
+        depends on BCM_MTD
+        default "0x198100"
+
+config BCM_SS_NAME
+	string "Partition ss name"
+	depends on BCM_MTD
+	default "mtdss"
+
+config BCM_SS_SIZE
+	hex "Partition ss size"
+	depends on BCM_MTD
+	default "0x20000"
+
+config BCM_SS_OFFSET
+	hex "Partition ss offset (relative to the physical flash start)"
+	depends on BCM_MTD
+	default "0x20000"
 
 config MTD_SUN_UFLASH
 	tristate "Sun Microsystems userflash support"

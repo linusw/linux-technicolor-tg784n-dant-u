@@ -67,6 +67,22 @@ static void br_message_age_timer_expired(unsigned long arg)
 	spin_lock(&br->lock);
 	if (p->state == BR_STATE_DISABLED)
 		goto unlock;
+#if defined(CONFIG_BCM_KF_STP_LOOP)
+	if (p->is_dedicated_stp_port)
+	{
+		/* we are no longer receiving bpdus from upstream device.  Could be due to interference
+		  or upstream device going down.  Regardless, we do not want to become the DP.
+		  If the device is lost, the connection is dead anyways -- no one to receive bpdus
+		  If this is interference / starvation, we do not want to become DP and send traffic
+			(potential loop)
+		  If a new root has been added 'downstream', then the tcn bpdu's will take care of
+			making this port the DP (and the DP has no timer, so we're good) */
+		printk("\n-------\n  [%s.%d] -- message age time expired for %s -- IGNORING!\n\n", __func__, __LINE__,
+				p->dev->name);
+		// note: this does NOT restart the timer
+		goto unlock;
+	}
+#endif
 	was_root = br_is_root_bridge(br);
 
 	br_become_designated_port(p);

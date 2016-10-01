@@ -292,6 +292,11 @@ int apply_relocate(Elf_Shdr *sechdrs, const char *strtab,
 		v = sym->st_value;
 
 		res = reloc_handlers_rel[ELF_MIPS_R_TYPE(rel[i])](me, location, v);
+#ifdef CONFIG_TCH_KF_PREALLOC_WL
+                if (res) {
+                                printk("Relocation problem for %s\n", strtab + sym->st_name);
+		}
+#endif 
 		if (res)
 			return res;
 	}

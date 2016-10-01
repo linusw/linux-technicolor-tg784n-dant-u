@@ -132,6 +132,10 @@
  */
 #define lower_32_bits(n) ((u32)(n))
 
+#if defined(CONFIG_BCM_KF_PRINTK_INT_ENABLED) && defined(CONFIG_BCM_PRINTK_INT_ENABLED)
+extern int printk_with_interrupt_enabled;
+#endif
+
 struct completion;
 struct pt_regs;
 struct user;

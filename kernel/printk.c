@@ -54,7 +54,11 @@
 
 /* We show everything that is MORE important than this.. */
 #define MINIMUM_CONSOLE_LOGLEVEL 1 /* Minimum loglevel we let people use */
+#if defined(CONFIG_BCM_KF_CONSOLE_LOGLEVEL)
+#define DEFAULT_CONSOLE_LOGLEVEL CONFIG_BCM_DEFAULT_CONSOLE_LOGLEVEL
+#else
 #define DEFAULT_CONSOLE_LOGLEVEL 7 /* anything MORE serious than KERN_DEBUG */
+#endif
 
 DECLARE_WAIT_QUEUE_HEAD(log_wait);
 
@@ -137,6 +141,13 @@ EXPORT_SYMBOL(console_set_on_cmdline);
 
 /* Flag: console code may call schedule() */
 static int console_may_schedule;
+
+#if defined(CONFIG_BCM_KF_PRINTK_INT_ENABLED) 
+int printk_with_interrupt_enabled = 0;
+#if defined(CONFIG_PREEMPT_RT_FULL)
+#define CC_CHECK_PRINTK_RT_FULL 1
+#endif
+#endif
 
 #ifdef CONFIG_PRINTK
 
@@ -845,11 +856,20 @@ static int console_trylock_for_printk(unsigned int cpu, unsigned long flags)
 	__releases(&logbuf_lock)
 {
 	int retval = 0, wake = 0;
+#if defined(CONFIG_BCM_KF_PRINTK_INT_ENABLED) && (defined(CONFIG_BCM_PRINTK_INT_ENABLED) || defined(CC_CHECK_PRINTK_RT_FULL))
+	int lock = 1;
+	if(printk_with_interrupt_enabled) {
+		lock = !early_boot_irqs_disabled && !irqs_disabled_flags(flags) &&
+			!(preempt_count() & 0xffff0000);
+		lock |= oops_in_progress;
+	}
+#else
 #ifdef CONFIG_PREEMPT_RT_FULL
 	int lock = !early_boot_irqs_disabled && !irqs_disabled_flags(flags) &&
 		(preempt_count() <= 1);
 #else
 	int lock = 1;
+#endif
 #endif
 
 	if (lock && console_trylock()) {
@@ -1030,6 +1050,15 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 	 * actually gets the semaphore or not.
 	 */
 	if (console_trylock_for_printk(this_cpu, flags)) {
+#if defined(CONFIG_BCM_KF_PRINTK_INT_ENABLED) && (defined(CONFIG_BCM_PRINTK_INT_ENABLED) || defined(CC_CHECK_PRINTK_RT_FULL))
+		if(printk_with_interrupt_enabled) {
+			raw_local_irq_restore(flags);
+			console_unlock();
+			raw_local_irq_save(flags);
+		} else {
+			console_unlock();
+		}
+#else // CONFIG_BCM_KF_PRINTK_INT_ENABLED
 #ifndef CONFIG_PREEMPT_RT_FULL
 		console_unlock();
 #else
@@ -1037,6 +1066,7 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 		console_unlock();
 		raw_local_irq_save(flags);
 #endif
+#endif // CONFIG_BCM_KF_PRINTK_INT_ENABLED
 	}
 
 	lockdep_on();
@@ -1360,6 +1390,18 @@ again:
 		_con_start = con_start;
 		_log_end = log_end;
 		con_start = log_end;		/* Flush */
+#if defined(CONFIG_BCM_KF_PRINTK_INT_ENABLED) && (defined(CONFIG_BCM_PRINTK_INT_ENABLED) || defined(CC_CHECK_PRINTK_RT_FULL))
+		if(printk_with_interrupt_enabled) {
+			raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+			call_console_drivers(_con_start, _log_end);
+		} else {
+			raw_spin_unlock(&logbuf_lock);
+			stop_critical_timings();	/* don't trace print latency */
+			call_console_drivers(_con_start, _log_end);
+			start_critical_timings();
+			local_irq_restore(flags);
+		}
+#else
 #ifndef CONFIG_PREEMPT_RT_FULL
 		raw_spin_unlock(&logbuf_lock);
 		stop_critical_timings();	/* don't trace print latency */
@@ -1369,6 +1411,7 @@ again:
 #else
 		raw_spin_unlock_irqrestore(&logbuf_lock, flags);
 		call_console_drivers(_con_start, _log_end);
+#endif
 #endif
 	}
 	console_locked = 0;

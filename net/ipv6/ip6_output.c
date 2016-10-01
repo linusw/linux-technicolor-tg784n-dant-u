@@ -163,6 +163,12 @@ int ip6_output(struct sk_buff *skb)
 {
 	struct net_device *dev = skb_dst(skb)->dev;
 	struct inet6_dev *idev = ip6_dst_idev(skb_dst(skb));
+#if defined(CONFIG_BCM_KF_BLOG) && defined(CONFIG_BLOG)
+	uint32_t mtu = ip6_skb_dst_mtu(skb);
+	Blog_t * blog_p = blog_ptr(skb);
+	if (blog_p && blog_p->minMtu > mtu)
+		blog_p->minMtu = mtu;
+#endif
 	if (unlikely(idev->cnf.disable_ipv6)) {
 		IP6_INC_STATS(dev_net(dev), idev,
 			      IPSTATS_MIB_OUTDISCARDS);
@@ -382,6 +388,35 @@ static inline int ip6_forward_finish(struct sk_buff *skb)
 	return dst_output(skb);
 }
 
+#if defined(CONFIG_BCM_KF_IP)
+static inline int isULA(const struct in6_addr *addr)
+{
+	__be32 st;
+
+	st = addr->s6_addr32[0];
+
+	/* RFC 4193 */
+	if ((st & htonl(0xFE000000)) == htonl(0xFC000000))
+		return	1;
+	else
+		return	0;
+}
+
+static inline int isSpecialAddr(const struct in6_addr *addr)
+{
+	__be32 st;
+
+	st = addr->s6_addr32[0];
+
+	/* RFC 5156 */
+	if (((st & htonl(0xFFFFFFFF)) == htonl(0x20010db8)) ||
+		((st & htonl(0xFFFFFFF0)) == htonl(0x20010010)))
+		return	1;
+	else
+		return	0;
+}
+#endif
+
 int ip6_forward(struct sk_buff *skb)
 {
 	struct dst_entry *dst = skb_dst(skb);
@@ -439,6 +474,14 @@ int ip6_forward(struct sk_buff *skb)
 		return -ETIMEDOUT;
 	}
 
+#if defined(CONFIG_BCM_KF_IP)
+    /* No traffic with ULA address should be forwarded at WAN intf */
+	if ( isULA(&hdr->daddr) || isULA(&hdr->saddr) )
+		if ((skb->dev->priv_flags & IFF_WANDEV) || 
+			(dst->dev->priv_flags & IFF_WANDEV) )
+			goto drop;
+#endif
+
 	/* XXX: idev->cnf.proxy_ndp? */
 	if (net->ipv6.devconf_all->proxy_ndp &&
 	    pneigh_lookup(&nd_tbl, net, &hdr->daddr, skb->dev, 0)) {
@@ -490,7 +533,19 @@ int ip6_forward(struct sk_buff *skb)
 
 		/* This check is security critical. */
 		if (addrtype == IPV6_ADDR_ANY ||
+#if defined(CONFIG_BCM_KF_IP)
+			/* 
+			 * RFC 5156: IPv4 mapped addr and IPv4-compatible addr
+			 * should not appear on the Internet. In addition,
+			 * 2001:db8::/32 and 2001:10::/28 should not appear either.
+			 */
+			(addrtype & (IPV6_ADDR_MULTICAST | IPV6_ADDR_LOOPBACK | 
+				IPV6_ADDR_COMPATv4 | IPV6_ADDR_MAPPED | 
+				IPV6_ADDR_SITELOCAL)) ||
+			isSpecialAddr(&hdr->saddr))
+#else
 		    addrtype & (IPV6_ADDR_MULTICAST | IPV6_ADDR_LOOPBACK))
+#endif
 			goto error;
 		if (addrtype & IPV6_ADDR_LINKLOCAL) {
 			icmpv6_send(skb, ICMPV6_DEST_UNREACH,
@@ -525,6 +580,13 @@ int ip6_forward(struct sk_buff *skb)
 	/* Mangling hops number delayed to point after skb COW */
 
 	hdr->hop_limit--;
+
+#if defined(CONFIG_BCM_KF_WANDEV)
+	/* Never forward a packet from a WAN intf to the other WAN intf */
+	if( (skb->dev) && (dst->dev) && 
+		((skb->dev->priv_flags & dst->dev->priv_flags) & IFF_WANDEV) )
+		goto drop;
+#endif
 
 	IP6_INC_STATS_BH(net, ip6_dst_idev(dst), IPSTATS_MIB_OUTFORWDATAGRAMS);
 	return NF_HOOK(NFPROTO_IPV6, NF_INET_FORWARD, skb, skb->dev, dst->dev,
@@ -898,6 +960,9 @@ fail:
 	kfree_skb(skb);
 	return err;
 }
+#if defined(CONFIG_BCM_KF_IP)
+EXPORT_SYMBOL_GPL(ip6_fragment);
+#endif
 
 static inline int ip6_rt_check(const struct rt6key *rt_key,
 			       const struct in6_addr *fl_addr,
@@ -1122,6 +1187,11 @@ static inline int ip6_ufo_append_data(struct sock *sk,
 	 * udp datagram
 	 */
 	if ((skb = skb_peek_tail(&sk->sk_write_queue)) == NULL) {
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)		
+		/*CVE-2013-4387*/
+		struct frag_hdr fhdr;
+#endif
+
 		skb = sock_alloc_send_skb(sk,
 			hh_len + fragheaderlen + transhdrlen + 20,
 			(flags & MSG_DONTWAIT), &err);
@@ -1142,12 +1212,16 @@ static inline int ip6_ufo_append_data(struct sock *sk,
 
 		skb->ip_summed = CHECKSUM_PARTIAL;
 		skb->csum = 0;
+
+#if !defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
 	}
 
 	err = skb_append_datato_frags(sk,skb, getfrag, from,
 				      (length - transhdrlen));
 	if (!err) {
 		struct frag_hdr fhdr;
+#endif
+		
 
 		/* Specify the length of each IPv6 datagram fragment.
 		 * It has to be a multiple of 8.
@@ -1158,15 +1232,22 @@ static inline int ip6_ufo_append_data(struct sock *sk,
 		ipv6_select_ident(&fhdr, rt);
 		skb_shinfo(skb)->ip6_frag_id = fhdr.identification;
 		__skb_queue_tail(&sk->sk_write_queue, skb);
-
+#if !defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
 		return 0;
+#endif
 	}
+#if !defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
 	/* There is not enough support do UPD LSO,
 	 * so follow normal path
 	 */
 	kfree_skb(skb);
 
 	return err;
+#else
+	/*CVE-2013-4387*/
+	return skb_append_datato_frags(sk, skb, getfrag, from,
+				       (length - transhdrlen));
+#endif
 }
 
 static inline struct ipv6_opt_hdr *ip6_opt_dup(struct ipv6_opt_hdr *src,
@@ -1337,7 +1418,31 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 	 * --yoshfuji
 	 */
 
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
+	/*CVE-2013-4387*/
+	if ((length > mtu) && dontfrag && (sk->sk_protocol == IPPROTO_UDP ||
+					   sk->sk_protocol == IPPROTO_RAW)) {
+		ipv6_local_rxpmtu(sk, fl6, mtu-exthdrlen);
+		return -EMSGSIZE;
+	}
+
+	skb = skb_peek_tail(&sk->sk_write_queue);
+#endif
 	cork->length += length;
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)	
+	/*CVE-2013-4387*/
+	if (((length > mtu) ||
+		/*CVE-2013-4470*/
+	     (skb && skb_shinfo(skb)->nr_frags)) &&
+	    (sk->sk_protocol == IPPROTO_UDP) &&
+	    (rt->dst.dev->features & NETIF_F_UFO)) {
+		err = ip6_ufo_append_data(sk, getfrag, from, length,
+					  hh_len, fragheaderlen,
+					  transhdrlen, mtu, flags, rt);
+		if (err)
+			goto error;
+		return 0;
+#else
 	if (length > mtu) {
 		int proto = sk->sk_protocol;
 		if (dontfrag && (proto == IPPROTO_UDP || proto == IPPROTO_RAW)){
@@ -1355,9 +1460,15 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 				goto error;
 			return 0;
 		}
+#endif
 	}
 
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)	
+	/*CVE-2013-4387*/
+	if (!skb)
+#else
 	if ((skb = skb_peek_tail(&sk->sk_write_queue)) == NULL)
+#endif
 		goto alloc_new_skb;
 
 	while (length > 0) {

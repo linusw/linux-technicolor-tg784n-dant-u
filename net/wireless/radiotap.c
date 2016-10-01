@@ -95,6 +95,12 @@ int ieee80211_radiotap_iterator_init(
 	struct ieee80211_radiotap_header *radiotap_header,
 	int max_length, const struct ieee80211_radiotap_vendor_namespaces *vns)
 {
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
+/*CVE-2013-7027*/
+	/* check the radiotap header can actually be present */
+	if (max_length < sizeof(struct ieee80211_radiotap_header))
+		return -EINVAL;
+#endif
 	/* Linux only supports version 0 radiotap format */
 	if (radiotap_header->it_version)
 		return -EINVAL;
@@ -129,7 +135,13 @@ int ieee80211_radiotap_iterator_init(
 			 */
 
 			if ((unsigned long)iterator->_arg -
+#if defined(CONFIG_BCM_KF_MISC_3_4_CVE_PORTS)
+		/*CVE-2013-7027*/
+			    (unsigned long)iterator->_rtheader +
+			    sizeof(uint32_t) >
+#else
 			    (unsigned long)iterator->_rtheader >
+#endif
 			    (unsigned long)iterator->_max_length)
 				return -EINVAL;
 		}
